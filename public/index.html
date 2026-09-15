@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeckHofis • Smart Neck Telemetry & Acoustic Monitor</title>
+  <meta name="description" content="Real-time IoT telemetry monitor for ESP8266 dual neck temperature sensors and acoustic zero-crossing frequency measurements, backed by MongoDB Atlas." />
+  <meta name="theme-color" content="#0a0f1d" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome / Icons via CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <div class="app-wrapper">
+    <!-- Top Navigation / Header -->
+    <header class="app-header">
+      <div class="header-branding">
+        <div class="brand-logo">
+          <i class="fa-solid fa-microchip-fold"></i>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <h1>NeckHofis</h1>
+            <span class="badge badge-iot">ESP8266 • ADS1115</span>
+          </div>
+          <p class="brand-subtitle">Bilateral Neck Thermal & Acoustic Telemetry Dashboard</p>
+        </div>
+      </div>
+
+      <div class="header-status-panel">
+        <!-- Device Live Status -->
+        <div id="deviceStatusBadge" class="status-indicator-box status-offline">
+          <span class="pulsing-dot"></span>
+          <div class="status-label-group">
+            <span class="status-sub">DEVICE STATUS</span>
+            <span id="deviceStatusText" class="status-main">CHECKING...</span>
+          </div>
+        </div>
+
+        <!-- Database Indicator -->
+        <div id="dbStatusBadge" class="status-indicator-box status-db">
+          <i class="fa-solid fa-database"></i>
+          <div class="status-label-group">
+            <span class="status-sub">STORAGE</span>
+            <span id="dbStatusText" class="status-main">CONNECTING...</span>
+          </div>
+        </div>
+
+        <!-- Refresh & Simulator Controls -->
+        <div class="header-actions">
+          <button id="simulatorBtn" class="btn btn-secondary" title="Open Hardware Simulator">
+            <i class="fa-solid fa-sliders"></i>
+            <span>Simulator</span>
+          </button>
+          <button id="refreshBtn" class="btn btn-primary" title="Refresh Live Data">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate"></i>
+            <span>Sync</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sub-bar: Auto-sync countdown, timestamp, and units -->
+    <div class="sub-header-bar">
+      <div class="sync-info">
+        <label class="toggle-switch">
+          <input type="checkbox" id="autoRefreshToggle" checked />
+          <span class="slider round"></span>
+        </label>
+        <span class="toggle-label">Auto-sync (5s)</span>
+        <span class="countdown-tag" id="syncCountdown">5s</span>
+      </div>
+
+      <div class="live-clock">
+        <i class="fa-regular fa-clock"></i>
+        <span id="currentTimeDisplay">--:--:--</span>
+      </div>
+
+      <div class="last-packet-info">
+        <span class="sub-text">Last Received:</span>
+        <span id="lastReceivedTime" class="highlight-text">No packets yet</span>
+      </div>
+    </div>
+
+    <!-- Main Dashboard Body -->
+    <main class="dashboard-content">
+      <!-- 4 High-Impact Metric Cards -->
+      <section class="metrics-grid">
+        <!-- Card 1: Left Neck Temperature (Working LM35) -->
+        <div class="metric-card card-left-temp">
+          <div class="card-header">
+            <div class="card-icon icon-teal">
+              <i class="fa-solid fa-temperature-half"></i>
+            </div>
+            <div class="card-meta">
+              <span class="channel-badge active-pin">ADS1115 A0 • LIVE</span>
+              <span id="leftTempPill" class="state-pill pill-normal">Normal</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <span class="card-title">Left Neck Temp (LM35)</span>
+            <div class="value-display">
+              <span id="leftTempValue" class="metric-value">--.--</span>
+              <span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-trend" id="leftTempFahrenheit">--.- °F</div>
+          </div>
+          <div class="card-footer">
+            <div class="sensor-health">
+              <i class="fa-solid fa-circle-check text-success"></i>
+              <span>Hardware LM35 Active & Verified</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Right Neck Temperature (Estimated) -->
+        <div class="metric-card card-right-temp">
+          <div class="card-header">
+            <div class="card-icon icon-amber">
+              <i class="fa-solid fa-calculator"></i>
+            </div>
+            <div class="card-meta">
+              <span class="channel-badge est-pin">ADS1115 A1 • ESTIMATED</span>
+              <span class="state-pill pill-est">Estimated +0.20°C</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <span class="card-title">Right Neck Temp (LM35)</span>
+            <div class="value-display">
+              <span id="rightTempValue" class="metric-value">--.--</span>
+              <span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-trend" id="rightTempFahrenheit">--.- °F</div>
+          </div>
+          <div class="card-footer">
+            <div class="sensor-health">
+              <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+              <span>Physical sensor faulty • Modeled via Offset</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Acoustic Zero-Crossing Frequency -->
+        <div class="metric-card card-mic-freq">
+          <div class="card-header">
+            <div class="card-icon icon-purple">
+              <i class="fa-solid fa-wave-square"></i>
+            </div>
+            <div class="card-meta">
+              <span class="channel-badge mic-pin">ADS1115 A2 • MIC</span>
+              <span id="freqBandPill" class="state-pill pill-freq">Acoustic</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <span class="card-title">Microphone Frequency</span>
+            <div class="value-display">
+              <span id="freqValue" class="metric-value">--.--</span>
+              <span class="metric-unit">Hz</span>
+            </div>
+            <div class="metric-trend" id="freqDescription">Zero-crossing calculation</div>
+          </div>
+          <div class="card-footer">
+            <div class="frequency-meter">
+              <div class="meter-bar-track">
+                <div id="freqMeterFill" class="meter-bar-fill" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Thermal Balance & Difference -->
+        <div class="metric-card card-differential">
+          <div class="card-header">
+            <div class="card-icon icon-blue">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+            <div class="card-meta">
+              <span class="channel-badge diff-pin">DIFFERENTIAL</span>
+              <span id="diffPill" class="state-pill pill-balanced">Symmetric</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <span class="card-title">Bilateral Temp Difference (ΔT)</span>
+            <div class="value-display">
+              <span id="diffValue" class="metric-value">--.--</span>
+              <span class="metric-unit">°C</span>
+            </div>
+            <div class="metric-trend" id="meanTempValue">Mean: --.-- °C</div>
+          </div>
+          <div class="card-footer">
+            <div class="sensor-health">
+              <i class="fa-solid fa-stopwatch text-info"></i>
+              <span id="sendIntervalNotice">ESP Cycle: Every 2 Minutes</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hardware Simulator Drawer (Collapsible) -->
+      <section id="simulatorPanel" class="simulator-panel hidden">
+        <div class="sim-card">
+          <div class="sim-header">
+            <div class="sim-title">
+              <i class="fa-solid fa-robot"></i>
+              <h3>Interactive Telemetry Simulator</h3>
+            </div>
+            <p class="sim-sub">Generate and send realistic ESP8266 test packets to test the MongoDB database and dashboard without physical hardware.</p>
+          </div>
+
+          <div class="sim-controls-grid">
+            <div class="sim-field">
+              <label for="simLeftTemp">Left Temp (°C): <span id="simLeftDisplay">36.50</span></label>
+              <input type="range" id="simLeftTemp" min="34" max="41" step="0.05" value="36.5" />
+            </div>
+
+            <div class="sim-field">
+              <label for="simOffset">Right Offset (°C): <span id="simOffsetDisplay">+0.20</span></label>
+              <input type="range" id="simOffset" min="0.00" max="1.50" step="0.05" value="0.20" />
+            </div>
+
+            <div class="sim-field">
+              <label for="simFrequency">Mic Frequency (Hz): <span id="simFreqDisplay">135.0</span></label>
+              <input type="range" id="simFrequency" min="50" max="450" step="1" value="135" />
+            </div>
+
+            <div class="sim-actions">
+              <button id="sendSimPacketBtn" class="btn btn-accent">
+                <i class="fa-solid fa-paper-plane"></i> Send Test Packet
+              </button>
+              <button id="autoSimToggleBtn" class="btn btn-outline">
+                <i class="fa-solid fa-play"></i> Auto Simulate (10s)
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Charts Section -->
+      <section class="charts-section">
+        <!-- Dual Temperature Timeline -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <div class="chart-title-group">
+              <div class="chart-icon"><i class="fa-solid fa-chart-line"></i></div>
+              <div>
+                <h3>Dual Neck Temperature Timeline</h3>
+                <span class="chart-subtitle">Left LM35 (A0) vs Right Modeled (A1) over time</span>
+              </div>
+            </div>
+            <div class="chart-legend-custom">
+              <span class="legend-item"><span class="legend-dot dot-cyan"></span> Left (Live)</span>
+              <span class="legend-item"><span class="legend-dot dot-amber"></span> Right (Est)</span>
+            </div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="temperatureChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Frequency Timeline -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <div class="chart-title-group">
+              <div class="chart-icon icon-purple"><i class="fa-solid fa-chart-simple"></i></div>
+              <div>
+                <h3>Acoustic Zero-Crossing History</h3>
+                <span class="chart-subtitle">Mic input frequency (Hz) captured over time</span>
+              </div>
+            </div>
+            <div class="chart-legend-custom">
+              <span class="legend-item"><span class="legend-dot dot-purple"></span> Frequency (Hz)</span>
+            </div>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="frequencyChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Telemetry History Table -->
+      <section class="table-section">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title-group">
+              <div class="table-icon"><i class="fa-solid fa-table-list"></i></div>
+              <div>
+                <h3>Telemetry Event Log</h3>
+                <span id="tableRecordCount" class="table-subtitle">0 recordings stored</span>
+              </div>
+            </div>
+
+            <div class="table-actions">
+              <button id="exportCsvBtn" class="btn btn-sm btn-outline" title="Download CSV">
+                <i class="fa-solid fa-file-csv"></i> Export CSV
+              </button>
+              <button id="clearDataBtn" class="btn btn-sm btn-danger-outline" title="Clear test data">
+                <i class="fa-solid fa-trash-can"></i> Clear
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="telemetry-table" id="telemetryTable">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Time Ago</th>
+                  <th>Left Temp (A0)</th>
+                  <th>Right Temp (A1)</th>
+                  <th>Difference (ΔT)</th>
+                  <th>Frequency</th>
+                  <th>Client IP</th>
+                  <th>Storage</th>
+                </tr>
+              </thead>
+              <tbody id="telemetryTableBody">
+                <tr>
+                  <td colspan="8" class="text-center empty-state">
+                    <div class="empty-box">
+                      <i class="fa-solid fa-satellite-dish fa-spin"></i>
+                      <p>Listening for ESP8266 telemetry packets on <code>/tempstore</code>...</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Documentation & Configuration Guide Accordion -->
+      <section class="docs-section">
+        <div class="docs-card">
+          <div class="docs-header" id="docsAccordionToggle">
+            <div class="docs-title">
+              <i class="fa-solid fa-circle-nodes"></i>
+              <h3>Hardware Connection & ESP8266 Code Reference</h3>
+            </div>
+            <i id="docsChevron" class="fa-solid fa-chevron-down"></i>
+          </div>
+
+          <div id="docsContent" class="docs-body hidden">
+            <div class="docs-grid">
+              <div class="doc-block">
+                <h4>📡 ESP8266 HTTP Target</h4>
+                <p>Ensure your ESP8266 <code>SERVER_URL</code> points to this server's <code>/tempstore</code> endpoint:</p>
+                <div class="code-box">
+                  <code>const char* SERVER_URL = "https://neckhofis.onrender.com/tempstore";</code>
+                </div>
+                <p class="doc-note">For local WiFi testing on the same network, replace with your laptop's local IP (e.g., <code>http://192.168.1.50:3000/tempstore</code>).</p>
+              </div>
+
+              <div class="doc-block">
+                <h4>🍃 MongoDB Atlas Connection</h4>
+                <p>To persist data to your MongoDB Atlas cluster:</p>
+                <ol class="docs-steps">
+                  <li>Create a free cluster on <a href="https://www.mongodb.com/cloud/atlas" target="_blank" rel="noopener">MongoDB Atlas</a>.</li>
+                  <li>Click <strong>Connect</strong> &gt; <strong>Drivers</strong> &gt; copy connection string.</li>
+                  <li>Paste into your <code>.env</code> file:
+                    <div class="code-box">
+                      <code>MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/neckhofis?retryWrites=true&w=majority</code>
+                    </div>
+                  </li>
+                  <li>Restart the backend server. The badge above will turn green!</li>
+                </ol>
+              </div>
+
+              <div class="doc-block">
+                <h4>🚀 Deploying to Render</h4>
+                <p>Since your ESP8266 code is configured for <code>neckhofis.onrender.com</code>:</p>
+                <ol class="docs-steps">
+                  <li>Push this repository to GitHub.</li>
+                  <li>Log in to <a href="https://render.com" target="_blank" rel="noopener">Render.com</a> and select <strong>New Web Service</strong>.</li>
+                  <li>Set Build Command: <code>npm install</code></li>
+                  <li>Set Start Command: <code>npm start</code></li>
+                  <li>Add Environment Variable: <code>MONGODB_URI</code></li>
+                  <li>Render will assign your service URL: <code>neckhofis.onrender.com</code>!</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p>NeckHofis IoT Telemetry Hub • Dual LM35 Bilateral Sensor & Microphone Frequency Analysis</p>
+        <span class="footer-sub">Optimized for ESP8266 + ADS1115 I2C ADC</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Custom JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>

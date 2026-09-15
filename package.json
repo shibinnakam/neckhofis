@@ -1,0 +1,27 @@
+{
+  "name": "neckhofis-backend",
+  "version": "1.0.0",
+  "description": "Node.js & MongoDB Atlas Telemetry Hub for ESP8266 Neck Sensor Prototype",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "esp8266",
+    "iot",
+    "mongodb",
+    "lm35",
+    "telemetry",
+    "temperature",
+    "frequency"
+  ],
+  "author": "NeckHofis Team",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.4.1"
+  }
+}

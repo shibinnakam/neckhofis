@@ -225,7 +225,7 @@
           <div class="sim-controls-grid">
             <div class="sim-field">
               <label for="simLeftTemp">Left Temp (°C): <span id="simLeftDisplay">36.50</span></label>
-              <input type="range" id="simLeftTemp" min="34" max="41" step="0.05" value="36.5" />
+              <input type="range" id="simLeftTemp" min="34" max="100" step="0.1" value="36.5" />
             </div>
 
             <div class="sim-field">
@@ -236,6 +236,16 @@
             <div class="sim-field">
               <label for="simFrequency">Mic Frequency (Hz): <span id="simFreqDisplay">135.0</span></label>
               <input type="range" id="simFrequency" min="50" max="450" step="1" value="135" />
+            </div>
+
+            <div class="sim-presets-group">
+              <span class="sub-text" style="font-size: 0.78rem; color: #94a3b8;">Quick Test Presets (Simulate ESP High Spikes):</span>
+              <div class="sim-presets">
+                <button type="button" class="btn-preset" data-temp="87" data-freq="210">⚡ Raw 87°C Spike</button>
+                <button type="button" class="btn-preset" data-temp="67" data-freq="135">⚡ Raw 67°C Spike</button>
+                <button type="button" class="btn-preset" data-temp="75" data-freq="160">⚡ Raw 75°C Spike</button>
+                <button type="button" class="btn-preset" data-temp="36.5" data-freq="120">🌿 Normal 36.5°C</button>
+              </div>
             </div>
 
             <div class="sim-actions">

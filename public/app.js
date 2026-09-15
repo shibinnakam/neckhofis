@@ -146,6 +146,23 @@ function bindEvents() {
   // Send Simulated Packet
   elements.sendSimPacketBtn.addEventListener('click', injectSimulatedPacket);
 
+  // Quick Preset Buttons
+  document.querySelectorAll('.btn-preset').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const temp = parseFloat(btn.getAttribute('data-temp'));
+      const freq = parseFloat(btn.getAttribute('data-freq'));
+      if (!isNaN(temp)) {
+        elements.simLeftTemp.value = temp;
+        elements.simLeftDisplay.textContent = temp.toFixed(2);
+      }
+      if (!isNaN(freq)) {
+        elements.simFrequency.value = freq;
+        elements.simFreqDisplay.textContent = freq.toFixed(1);
+      }
+      injectSimulatedPacket();
+    });
+  });
+
   // Auto-Simulator Loop Toggle
   elements.autoSimToggleBtn.addEventListener('click', toggleAutoSimulator);
 
@@ -359,8 +376,14 @@ function updateTable(readings) {
       <tr>
         <td><strong>${timeFormatted}</strong> <span style="color: #64748b; font-size: 0.75rem;">${dateFormatted}</span></td>
         <td style="color: #94a3b8;">${timeAgo}</td>
-        <td style="color: #38bdf8; font-weight: 600;">${item.leftTemperature.toFixed(2)} °C</td>
-        <td style="color: #fbbf24; font-weight: 600;">${item.rightTemperature.toFixed(2)} °C</td>
+        <td style="color: #38bdf8; font-weight: 600;">
+          ${item.leftTemperature.toFixed(2)} °C
+          ${item.isAdjusted ? `<span class="badge-calibrated" title="Calibrated from raw ${item.rawLeftTemperature || 'high'}°C based on real-time & frequency">Adj</span>` : ''}
+        </td>
+        <td style="color: #fbbf24; font-weight: 600;">
+          ${item.rightTemperature.toFixed(2)} °C
+          ${item.isAdjusted ? `<span class="badge-calibrated" title="Calibrated from raw ${item.rawRightTemperature || 'high'}°C based on real-time & frequency">Adj</span>` : ''}
+        </td>
         <td style="color: #cbd5e1;">${diff} °C</td>
         <td style="color: #c084fc; font-weight: 600;">${item.frequency.toFixed(1)} Hz</td>
         <td style="color: #64748b; font-size: 0.75rem;">${item.deviceIp || '127.0.0.1'}</td>
@@ -605,12 +628,26 @@ function exportToCsv() {
     return;
   }
 
-  const headers = ['Timestamp', 'ISO_Date', 'Left_Temp_Celsius', 'Right_Temp_Celsius', 'Difference_Celsius', 'Frequency_Hz', 'Device_IP'];
+  const headers = [
+    'Timestamp',
+    'ISO_Date',
+    'Left_Temp_Celsius',
+    'Right_Temp_Celsius',
+    'Raw_Left_Temp_Celsius',
+    'Raw_Right_Temp_Celsius',
+    'Is_Adjusted',
+    'Difference_Celsius',
+    'Frequency_Hz',
+    'Device_IP'
+  ];
   const rows = state.readings.map((r) => [
     new Date(r.timestamp).toLocaleString(),
     new Date(r.timestamp).toISOString(),
     r.leftTemperature,
     r.rightTemperature,
+    r.rawLeftTemperature !== undefined ? r.rawLeftTemperature : '',
+    r.rawRightTemperature !== undefined ? r.rawRightTemperature : '',
+    r.isAdjusted ? 'true' : 'false',
     Math.abs(r.leftTemperature - r.rightTemperature).toFixed(2),
     r.frequency,
     r.deviceIp || 'unknown'

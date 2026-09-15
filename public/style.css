@@ -923,6 +923,55 @@ input:checked + .slider:before {
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+.badge-calibrated {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: help;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.sim-presets-group {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sim-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-preset {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-preset:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+}
+
 /* ================= DOCS ACCORDION ================= */
 .docs-section {
   width: 100%;

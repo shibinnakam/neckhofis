@@ -14,6 +14,16 @@ const sensorReadingSchema = new mongoose.Schema(
       min: [-50, 'Temperature cannot be below -50°C'],
       max: [150, 'Temperature cannot exceed 150°C']
     },
+    rawLeftTemperature: {
+      type: Number
+    },
+    rawRightTemperature: {
+      type: Number
+    },
+    isAdjusted: {
+      type: Boolean,
+      default: false
+    },
     isRightEstimated: {
       type: Boolean,
       default: true

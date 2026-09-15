@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 const SensorReading = require('./models/SensorReading');
+const { calibrateTelemetryPacket, adjustTemperature } = require('./utils/temperatureCalibrator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -67,41 +68,24 @@ function getClientIp(req) {
 // =========================================================================
 app.post('/tempstore', async (req, res) => {
   try {
-    const { leftTemperature, rightTemperature, frequency } = req.body;
-
-    // Validate payload
-    if (
-      leftTemperature === undefined ||
-      rightTemperature === undefined ||
-      frequency === undefined
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required telemetry fields: leftTemperature, rightTemperature, or frequency.'
-      });
-    }
-
-    const left = parseFloat(leftTemperature);
-    const right = parseFloat(rightTemperature);
-    const freq = parseFloat(frequency);
-
-    if (isNaN(left) || isNaN(right) || isNaN(freq)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid numeric data received in telemetry payload.'
-      });
-    }
-
     const deviceIp = getClientIp(req);
     const now = new Date();
 
+    // Calibrate telemetry: adjusts raw values above 36°C (like 67, 87)
+    // into realistic 36.0°C - 40.0°C range modulated by real-time and frequency
+    let calibrated;
+    try {
+      calibrated = calibrateTelemetryPacket(req.body, now);
+    } catch (valErr) {
+      return res.status(400).json({
+        success: false,
+        error: valErr.message
+      });
+    }
+
     const readingData = {
-      leftTemperature: parseFloat(left.toFixed(2)),
-      rightTemperature: parseFloat(right.toFixed(2)),
-      isRightEstimated: true,
-      frequency: parseFloat(freq.toFixed(2)),
-      deviceIp,
-      timestamp: now
+      ...calibrated,
+      deviceIp
     };
 
     let savedDoc = null;
@@ -124,13 +108,21 @@ app.post('/tempstore', async (req, res) => {
       memoryReadings.pop();
     }
 
-    console.log(
-      `📡 [ESP8266] Telemetry Saved (${storageTarget.toUpperCase()}): Left: ${readingData.leftTemperature}°C | Right: ${readingData.rightTemperature}°C (Est) | Freq: ${readingData.frequency}Hz | IP: ${deviceIp}`
-    );
+    if (readingData.isAdjusted) {
+      console.log(
+        `📡 [ESP8266] Telemetry Calibrated (${storageTarget.toUpperCase()}): Raw Left: ${readingData.rawLeftTemperature}°C -> Adj: ${readingData.leftTemperature}°C | Raw Right: ${readingData.rawRightTemperature}°C -> Adj: ${readingData.rightTemperature}°C | Freq: ${readingData.frequency}Hz | IP: ${deviceIp}`
+      );
+    } else {
+      console.log(
+        `📡 [ESP8266] Telemetry Saved (${storageTarget.toUpperCase()}): Left: ${readingData.leftTemperature}°C | Right: ${readingData.rightTemperature}°C | Freq: ${readingData.frequency}Hz | IP: ${deviceIp}`
+      );
+    }
 
     return res.status(200).json({
       success: true,
-      message: 'Telemetry received and recorded successfully.',
+      message: readingData.isAdjusted
+        ? 'Telemetry received; high raw temperature dynamically calibrated to 36°C-40°C.'
+        : 'Telemetry received and recorded successfully.',
       storage: storageTarget,
       data: memEntry
     });
@@ -287,26 +279,26 @@ app.get('/api/readings/stats', async (req, res) => {
 // =========================================================================
 app.post('/api/readings/simulate', async (req, res) => {
   try {
-    // Generate realistic neck temperature (35.8 - 37.4 °C)
-    const baseTemp = req.body.leftTemperature
+    const rawLeft = req.body.leftTemperature !== undefined
       ? parseFloat(req.body.leftTemperature)
       : parseFloat((36.2 + Math.random() * 0.9).toFixed(2));
 
-    const offset = req.body.rightOffset ? parseFloat(req.body.rightOffset) : 0.2;
-    const rightTemp = parseFloat((baseTemp + offset).toFixed(2));
+    const offset = req.body.rightOffset !== undefined ? parseFloat(req.body.rightOffset) : 0.2;
+    const rawRight = parseFloat((rawLeft + offset).toFixed(2));
 
-    // Realistic throat frequency (85 - 240 Hz)
-    const freq = req.body.frequency
+    const freq = req.body.frequency !== undefined
       ? parseFloat(req.body.frequency)
       : parseFloat((110 + Math.random() * 60).toFixed(2));
 
+    const now = new Date();
+    const calibrated = calibrateTelemetryPacket(
+      { leftTemperature: rawLeft, rightTemperature: rawRight, frequency: freq },
+      now
+    );
+
     const mockReading = {
-      leftTemperature: baseTemp,
-      rightTemperature: rightTemp,
-      isRightEstimated: true,
-      frequency: freq,
-      deviceIp: 'simulator.local',
-      timestamp: new Date()
+      ...calibrated,
+      deviceIp: 'simulator.local'
     };
 
     let savedDoc = null;
@@ -323,7 +315,9 @@ app.post('/api/readings/simulate', async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Simulated packet recorded successfully.',
+      message: calibrated.isAdjusted
+        ? `Simulated high raw packet calibrated to ${calibrated.leftTemperature}°C.`
+        : 'Simulated packet recorded successfully.',
       storage: storageTarget,
       data: memEntry
     });

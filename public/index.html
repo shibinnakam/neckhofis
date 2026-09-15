@@ -128,15 +128,15 @@
           </div>
         </div>
 
-        <!-- Card 2: Right Neck Temperature (Estimated) -->
+        <!-- Card 2: Right Neck Temperature -->
         <div class="metric-card card-right-temp">
           <div class="card-header">
             <div class="card-icon icon-amber">
-              <i class="fa-solid fa-calculator"></i>
+              <i class="fa-solid fa-temperature-half"></i>
             </div>
             <div class="card-meta">
-              <span class="channel-badge est-pin">ADS1115 A1 • ESTIMATED</span>
-              <span class="state-pill pill-est">Estimated +0.20°C</span>
+              <span class="channel-badge est-pin">ADS1115 A1 • LIVE</span>
+              <span id="rightTempPill" class="state-pill pill-normal">Normal</span>
             </div>
           </div>
           <div class="card-body">
@@ -149,8 +149,8 @@
           </div>
           <div class="card-footer">
             <div class="sensor-health">
-              <i class="fa-solid fa-triangle-exclamation text-warning"></i>
-              <span>Physical sensor faulty • Modeled via Offset</span>
+              <i class="fa-solid fa-circle-check text-success"></i>
+              <span>Hardware LM35 Right Sensor</span>
             </div>
           </div>
         </div>
@@ -259,12 +259,12 @@
               <div class="chart-icon"><i class="fa-solid fa-chart-line"></i></div>
               <div>
                 <h3>Dual Neck Temperature Timeline</h3>
-                <span class="chart-subtitle">Left LM35 (A0) vs Right Modeled (A1) over time</span>
+                <span class="chart-subtitle">Left LM35 (A0) vs Right LM35 (A1) over time</span>
               </div>
             </div>
             <div class="chart-legend-custom">
               <span class="legend-item"><span class="legend-dot dot-cyan"></span> Left (Live)</span>
-              <span class="legend-item"><span class="legend-dot dot-amber"></span> Right (Est)</span>
+              <span class="legend-item"><span class="legend-dot dot-amber"></span> Right (Live)</span>
             </div>
           </div>
           <div class="chart-canvas-container">

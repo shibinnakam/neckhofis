@@ -39,6 +39,7 @@ const elements = {
 
   rightTempValue: document.getElementById('rightTempValue'),
   rightTempFahrenheit: document.getElementById('rightTempFahrenheit'),
+  rightTempPill: document.getElementById('rightTempPill'),
 
   freqValue: document.getElementById('freqValue'),
   freqDescription: document.getElementById('freqDescription'),
@@ -264,10 +265,23 @@ function updateMetricCards(reading) {
     elements.leftTempPill.textContent = 'Fever Alert';
   }
 
-  // 2. Right Temperature Card (Estimated)
+  // 2. Right Temperature Card
   elements.rightTempValue.textContent = right.toFixed(2);
   const rightF = ((right * 9) / 5 + 32).toFixed(1);
   elements.rightTempFahrenheit.textContent = `${rightF} °F`;
+
+  if (elements.rightTempPill) {
+    if (right < 37.3) {
+      elements.rightTempPill.className = 'state-pill pill-normal';
+      elements.rightTempPill.textContent = 'Normal Range';
+    } else if (right <= 38.0) {
+      elements.rightTempPill.className = 'state-pill pill-elevated';
+      elements.rightTempPill.textContent = 'Elevated';
+    } else {
+      elements.rightTempPill.className = 'state-pill pill-fever';
+      elements.rightTempPill.textContent = 'Fever Alert';
+    }
+  }
 
   // 3. Differential Card
   const diff = Math.abs(left - right).toFixed(2);
@@ -346,7 +360,7 @@ function updateTable(readings) {
         <td><strong>${timeFormatted}</strong> <span style="color: #64748b; font-size: 0.75rem;">${dateFormatted}</span></td>
         <td style="color: #94a3b8;">${timeAgo}</td>
         <td style="color: #38bdf8; font-weight: 600;">${item.leftTemperature.toFixed(2)} °C</td>
-        <td style="color: #fbbf24; font-weight: 600;">${item.rightTemperature.toFixed(2)} °C <span style="font-size: 0.68rem; color: #64748b;">(Est)</span></td>
+        <td style="color: #fbbf24; font-weight: 600;">${item.rightTemperature.toFixed(2)} °C</td>
         <td style="color: #cbd5e1;">${diff} °C</td>
         <td style="color: #c084fc; font-weight: 600;">${item.frequency.toFixed(1)} Hz</td>
         <td style="color: #64748b; font-size: 0.75rem;">${item.deviceIp || '127.0.0.1'}</td>
@@ -425,7 +439,7 @@ function initCharts() {
           pointHoverRadius: 6
         },
         {
-          label: 'Right Temp (Est A1)',
+          label: 'Right Temp (Live A1)',
           data: [],
           borderColor: '#f59e0b',
           borderDash: [5, 4],
@@ -591,7 +605,7 @@ function exportToCsv() {
     return;
   }
 
-  const headers = ['Timestamp', 'ISO_Date', 'Left_Temp_Celsius', 'Right_Temp_Celsius_Estimated', 'Difference_Celsius', 'Frequency_Hz', 'Device_IP'];
+  const headers = ['Timestamp', 'ISO_Date', 'Left_Temp_Celsius', 'Right_Temp_Celsius', 'Difference_Celsius', 'Frequency_Hz', 'Device_IP'];
   const rows = state.readings.map((r) => [
     new Date(r.timestamp).toLocaleString(),
     new Date(r.timestamp).toISOString(),
